@@ -1,0 +1,1 @@
+A voice assistant to help you to schedule google calendar event
