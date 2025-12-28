@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
+// import { ReactMediaRecorder } from "react-media-recorder";
+
 import './App.css'
 
 function App() {
   const [isTalking, setIsTalking] = useState(false);
-  const [logs, setLogs] = useState(["Hello! It is your voice assistant. I am here to help you make a new schedule on Google Calendar. Let me know how can I help!"]);
-
+  const [logs, setLogs] = useState(["Hello! It is your voice assistant. I am here to help you make a new schedule on Google Calendar. Let me know how can I help! Start scheduling by clicking the talk button!"]);
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
 
   // Every time sth added to logs, it scrolls.
   useEffect(() => {
@@ -21,11 +25,48 @@ function App() {
     setLogs((prev) => [...prev, `[${timestamp}] ${message}`]);
   };
 
+  const startRecording = async () => {
+    try {
+      // Get Microphone Access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+
+      // Collect audio
+      mediaRecorder.current.ondataavailable = (event) => {
+        audioChunks.current.push(event.data);
+      };
+
+      // Audio on stop
+      mediaRecorder.current.onstop = () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        // setLogs(`Recording saved. Size: ${(audioBlob.size / 1024).toFixed(1)} KB`);
+        console.log("Audio URL:", audioUrl);
+        stream.getTracks().forEach(track =>   track.stop());
+      };
+
+      mediaRecorder.current.start();
+      toggleTalk();
+      // setLogs("Microphone active... recording.");
+    } catch (err) {
+      // setLogs("Error: Could not access microphone.");
+      console.error(err);
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorder.current?.stop();
+    toggleTalk();
+    // addLog("Recording stopped.");
+  };
+
   return (
     <div className="p-8 font-sans">
       {/* Button to talk/stop */}
       <button
-        onClick={toggleTalk}
+        // onClick={toggleTalk}
+        onClick={isTalking ? stopRecording : startRecording}
         className={`px-6 py-2 rounded-lg font-semibold text-white transition-colors duration-200 
           ${isTalking ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
       >
