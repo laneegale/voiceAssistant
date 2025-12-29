@@ -38,12 +38,27 @@ function App() {
       };
 
       // Audio on stop
-      mediaRecorder.current.onstop = () => {
+      mediaRecorder.current.onstop = async () => {
         const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
+        // const audioUrl = URL.createObjectURL(audioBlob);
+
+        const formData = new FormData();
+        formData.append('audio', audioBlob, `recording-${Date.now()}.webm`);
+        
+        await fetch('/api/save-audio', {
+          method: 'POST',
+          body: formData,
+        });
+        try {
+          console.log("Saving to project folder...");
+          
+          console.log("File saved successfully!");
+        } catch (error) {
+          console.log("Save failed: " + error);
+        }
         // setLogs(`Recording saved. Size: ${(audioBlob.size / 1024).toFixed(1)} KB`);
-        console.log("Audio URL:", audioUrl);
-        stream.getTracks().forEach(track =>   track.stop());
+        // console.log("Audio URL:", audioUrl);
+        stream.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorder.current.start();
@@ -72,7 +87,7 @@ function App() {
       >
         {isTalking ? 'Stop' : 'Talk'}
       </button>
-      
+
       {/* padding */}
       <div className="h-[10px]" />
 
