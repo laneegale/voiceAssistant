@@ -16,8 +16,7 @@ interface LoginResponse {
   audio: string;
 }
 
-// const init_log_message = "Hi there! I’m your calendar assistant. I can help you schedule new meetings on Google Calendar. If you're not signed in your google account, a window will appear for you to log in.";
-const init_log_message = "hi";
+const init_log_message = "Hi there! I’m your calendar assistant. I can help you schedule new meetings on Google Calendar. If you're not signed in your google account, a window will appear for you to log in.";
 
 function App() {
   const [isStarted, setIsStarted] = useState(false);

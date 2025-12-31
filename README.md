@@ -1,73 +1,57 @@
-# React + TypeScript + Vite
+# Voice Calendar Assistant
+An intelligent voice assistant designed to help you seamlessly schedule and manage your **Google Calendar** events using natural language.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+!<img src="./screenshot.png" width="600">
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 1. System dependencies
+Before setting up the Python environment, ensure you have the necessary system-level dependencies installed:
 
-## React Compiler
+```bash
+# Install audio processing tools
+sudo apt-get install ffmpeg libavcodec-extra
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+# Install Ollama (Local LLM runner)
+curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Pull model 
+ollama pull gemma3:12b
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Python environment
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Create and activate the environment
+conda create -n audioAssistant python=3.13
+conda activate audioAssistant
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Setup browser automation dependencies
+playwright install-deps
+
+```
+
+### 3. Frontend Dependencies
+npm install
+
+## Running the Application
+To get the assistant up and running, you will need to start both the backend and the frontend services.
+
+### Backend (FastAPI)
+The backend handles the voice processing and Google Calendar integration.
+
+```bash
+cd backend
+fastapi dev ./main.py --port 8000
+```
+
+### Frontend (React)
+
+```bash
+cd frontend
+npm run dev
 ```
