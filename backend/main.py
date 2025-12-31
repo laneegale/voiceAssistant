@@ -94,28 +94,6 @@ async def get_audio(text):
     return {"audio": audio_data}
 
 
-@app.post("/api/save-audio")
-async def save_audio(audio: UploadFile = File(...)):
-
-    temp_webm_path = os.path.join(UPLOAD_DIR, "temp_recording.webm")
-
-    with open(temp_webm_path, "wb") as buffer:
-        shutil.copyfileobj(audio.file, buffer)
-        buffer.flush()
-
-    try:
-        audio_data = AudioSegment.from_file(temp_webm_path)
-        audio_data.export(MP3_PATH, format="mp3")
-        os.remove(temp_webm_path)
-
-        print(f"Successfully converted to: {MP3_PATH}")
-        return {"message": "Saved as MP3", "path": MP3_PATH}
-
-    except Exception as e:
-        print("bad", str(e))
-        return {"message": "Conversion failed", "error": str(e)}
-
-
 @app.get("/api/login")
 def login() -> dict[str, str]:
     """

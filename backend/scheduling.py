@@ -1,8 +1,8 @@
-import time
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 from playwright.async_api import async_playwright
 from typing import List, TypedDict, Tuple
+
 
 class AppointmentData(TypedDict):
     meeting_name: str
@@ -12,6 +12,7 @@ class AppointmentData(TypedDict):
     end_date: str
     start_time: str
     end_time: str
+
 
 def get_google_calendar_datekey(date_str: str) -> int:
     """ Calcualte the Google datekey, from https://stackoverflow.com/questions/58080616/googlecalendar-datekey

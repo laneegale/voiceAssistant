@@ -57,3 +57,4 @@ class LLM_Helper:
 
     def append_chat_history(self, chat_obj: Dict[str, str]) -> None:
         self.chat_history += [chat_obj]
+

@@ -1,6 +1,7 @@
-pip install "fastapi[standard]"
-pydub
-pip install -q -U google-genai
-
-pip install pytest-playwright
-playwright install-deps
+fastapi[standard]==0.128.0
+pytest-playwright==0.7.2
+pydub==0.25.1
+openai-whisper==20250625
+gTTS==2.5.4
+ollama==0.6.1
+audioop-lts==0.2.2
