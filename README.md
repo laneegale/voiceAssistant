@@ -1,7 +1,7 @@
 # Voice Calendar Assistant
 An intelligent voice assistant designed to help you seamlessly schedule and manage your **Google Calendar** events using natural language.
 
-!<img src="./screenshot.png" width="600">
+<img src="./screenshot.png" width="600">
 
 ## Prerequisites
 
