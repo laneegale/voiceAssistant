@@ -2,12 +2,28 @@ import time
 from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 from playwright.async_api import async_playwright
+from typing import List, TypedDict, Tuple
 
+class AppointmentData(TypedDict):
+    meeting_name: str
+    location: str
+    description: str
+    start_date: str
+    end_date: str
+    start_time: str
+    end_time: str
 
+def get_google_calendar_datekey(date_str: str) -> int:
+    """ Calcualte the Google datekey, from https://stackoverflow.com/questions/58080616/googlecalendar-datekey
+        The datekey is used as the id of item of the calendar on Google Calendar website. It is necessary in order obtain information of existing schedules.
 
-def get_google_calendar_datekey(date_str):
-    """ Calcualte the Google datekey for webscrapping, from https://stackoverflow.com/questions/58080616/googlecalendar-datekey
         Formula = (Current_Year - 1970) * 512 + month * 32 + day
+    
+    Args:
+        date_str: A string representing a date in %d%m%Y format
+
+    Returns:
+        The datekey used as the id of item in calendar on the Google Calendar website
     """
     date_obj = datetime.strptime(date_str, "%d%m%Y")
     y = date_obj.year
@@ -19,8 +35,8 @@ def get_google_calendar_datekey(date_str):
     return datekey
 
 
-def check_if_google_calendar_login():
-    """ Check if 
+def check_if_google_calendar_login() -> None:
+    """ Check if the user has login to Google Calendar
     """
 
     selector = '[aria-label="Switch to Tasks"],[data-g-action="sign in"]'
@@ -47,7 +63,7 @@ def check_if_google_calendar_login():
             return False
 
 
-def parse_google_timestr_to_24h_range(time_str):
+def parse_google_timestr_to_24h_range(time_str: str) -> Tuple[str]:
     """
     Parses Google Calendar time strings extracted from web scraping into range pair (start_24h, end_24h) in 24-hours format .
 
@@ -110,27 +126,38 @@ def parse_google_timestr_to_24h_range(time_str):
         return None, None
 
 
-def validate_meeting_time(meeting):
+def validate_meeting_time(appointment: AppointmentData) -> Tuple[bool, str]:
     """
-    Validates a meeting dictionary for:
+    Validates if the provided appointment dates and times are logically sound. This function validates a appointment by:
     1. Valid date/time formats.
     2. end_date not being before start_date.
     3. end_time not being before start_time on the same day.
+
+    Args:
+        appointment: A dictionary containing 'start_date', 'end_date', 
+            'start_time', and 'end_time' keys.
+
+    Returns:
+        A tuple containing:
+            - bool: True if the meeting time is valid, False otherwise.
+            - str: A descriptive message explaining the validation result 
+                   (e.g., End time is earlier than start time").
+                   
     """
     try:
         # 1. Parse strings into datetime objects
         # Format: 31/12/2025 and 01:00pm
         start_dt = datetime.strptime(
-            f"{meeting['start_date']} {meeting['start_time']}", "%d/%m/%Y %I:%M%p"
+            f"{appointment['start_date']} {appointment['start_time']}", "%d/%m/%Y %I:%M%p"
         )
         end_dt = datetime.strptime(
-            f"{meeting['end_date']} {meeting['end_time']}", "%d/%m/%Y %I:%M%p"
+            f"{appointment['end_date']} {appointment['end_time']}", "%d/%m/%Y %I:%M%p"
         )
 
         # 2. Check: Is the end after the start?
         if end_dt <= start_dt:
             # Specific check for your example: same day but 12:00am (00:00) vs 01:00pm (13:00)
-            if meeting["start_date"] == meeting["end_date"]:
+            if appointment["start_date"] == appointment["end_date"]:
                 return (
                     False,
                     "End time is earlier than or equal to start time on the same day.",
@@ -144,13 +171,14 @@ def validate_meeting_time(meeting):
         return False, f"Your date is likely invalid."
 
 
-def parse_calendar_time(time_str):
-    """
-    All day -> 00:00-23:59
-    10 – 10:30am -> 10:00-10:30
-    10:30am – 5:21pm -> 10:30-17:21
-    11 – 1pm -> 11:00-13:00
+def parse_calendar_time(time_str: str) -> str:
+    """ Convert Display time format on Google Calendar to 24-Hours format
 
+    Example:
+        All day -> 00:00-23:59
+        10 – 10:30am -> 10:00-10:30
+        10:30am – 5:21pm -> 10:30-17:21
+        11 – 1pm -> 11:00-13:00
     """
     if time_str.lower() == "all day":
         return "00:00-23:59"
@@ -209,17 +237,24 @@ def parse_calendar_time(time_str):
 
         return f"{formatted_start}-{formatted_end}"
 
-    except Exception as e:
-        return f"Error parsing: {time_str}"
+    except:
+        return None
 
 
-def split_time_period(appointment):
-    """
-    {
-        'start_date': '31/12/2025', 'end_date': '02/01/2026',
-        'start_time': '09:00pm', 'end_time': '10:00pm'
-    }
-    => ['31122025,21:00-23:59', '01012026,00:00-23:59', '02012026,00:00-22:00']
+def split_time_period(appointment: AppointmentData) -> List[str]:
+    """ Given the start/end date/time obtained by scrapping from Google Calendar, Transform them into a easier-to-process format.
+    
+    Example:
+    Args:
+        appointment: A dictionary containing 'start_date', 'end_date', 
+            'start_time', and 'end_time' keys.
+            e.g.{
+                'start_date': '31/12/2025', 'end_date': '02/01/2026',
+                'start_time': '09:00pm', 'end_time': '10:00pm'
+                }
+    Returns:
+        A list of string about the span of time of the appointment
+            e.g.['31122025,21:00-23:59', '01012026,00:00-23:59', '02012026,00:00-22:00']
 
     """
     # 1. Parse dates and times into datetime objects for calculation
@@ -262,47 +297,50 @@ def split_time_period(appointment):
     return result
 
 
-def find_conflicting_events(scheduled_str, existing_events):
-    """Given a scheduled time like '31/12/2025,09:00-11:00' and the list of events during that day, return the list of time conflicted events.
+def find_conflicting_events(appointment_str: str, existing_events: Tuple[Tuple[str, ...], str]) -> List[Tuple[Tuple[str, ...], str]]:
+    """ Finding events that are conflicting with the current appointment
 
-    The list of event looks like this:
-    [['10 – 10:30am', 'Meeting', 'tom abc, Accepted'], ['10:30am – 5:21pm', 'Meeting', 'tom abc, Accepted'], ['until 1pm', 'M', ''], ["10am", "M", ""]]
+    Example:
+    Input:
+        appointment_str: representing the meeting start/end time 
+            '31122025,13:00-14:00'
 
-    scheduled_str: '31122025,13:00-14:00'
-
-    existing_events:
-    [(('00:00', '23:59'), 'Meeting with Tim'),
-    (('00:00', '23:59'), "New Year's Eve"),
-    (('00:00', '23:59'), 'New Year’s Eve'),
-    (('10:00', '10:30'), 'Meeting'),
-    (('10:30', '17:21'), 'Meeting')]
+        existing_events:
+            [(('00:00', '23:59'), "New Year's Eve"),
+             (('10:00', '10:30'), 'Meeting with Eve'),
+             (('10:30', '17:21'), 'Meeting with Team')]
+    Output:
+        Conflicted_events:
+             [(('10:30', '17:21'), 'Meeting with Team')]
     """
 
     conflicted_items = []
 
     try:
         # Expected format from split_time_period: 'DDMMYYYY,HH:MM-HH:MM'
-        _, time_part = scheduled_str.split(",")
-        s_start, s_end = time_part.split("-")
+        _, time_part = appointment_str.split(",")
+        appointment_start, appointment_end = time_part.split("-")
     except ValueError:
         return "Error: Invalid scheduled_time format."
 
     for event in existing_events:
-        e_time_str = event[0]
-        e_name = event[1]
+        event_time_str = event[0]
+        event_name = event[1]
 
-        e_start, e_end = event[0]
-        if not e_start:
+        event_start, event_end = event[0]
+        if not event_start:
             continue
 
         # Overlap Check: (StartA < EndB) and (EndA > StartB)
-        if s_start < e_end and s_end > e_start:
-            conflicted_items.append((e_time_str, e_name))
+        if appointment_start < event_end and appointment_end > event_start:
+            conflicted_items.append((event_time_str, event_name))
 
     return conflicted_items
 
 
-def generate_conflict_message(conflict_data):
+def generate_conflict_message(conflict_data) -> str:
+    """ Helper function
+    """
     convert_t_str = (
         lambda t_str: datetime.strptime(t_str, "%H:%M")
         .strftime("%I:%M%p")
@@ -330,99 +368,6 @@ def generate_conflict_message(conflict_data):
             lines.append(f"  - {event_name} ({clean_time})")
 
     return "\n".join(lines)
-
-
-def find_conflicting_events_old(scheduled_str, existing_events):
-    """Given a scheduled time like '31/12/2025,09:00-11:00' and the list of events during that day, return the list of time conflicted events.
-
-    The list of event looks like this:
-    [['10 – 10:30am', 'Meeting', 'tom abc, Accepted'], ['10:30am – 5:21pm', 'Meeting', 'tom abc, Accepted'], ['until 1pm', 'M', ''], ["10am", "M", ""]]
-
-    """
-
-    def parse_to_range(time_str):
-        """
-        Parses various Google Calendar time strings into (start_24h, end_24h).
-        Handles:
-        - 'All day' -> 00:00, 23:59
-        - '10am' -> 10:00, 23:59
-        - 'until 10am' -> 00:00, 10:00
-        - '10 – 11am' -> 10:00, 11:00
-        """
-        t_clean = time_str.lower().replace("–", "-").strip()
-
-        if t_clean == "all day":
-            return "00:00", "23:59"
-
-        def to_24h(t, force_p=None):
-            p = "pm" if "pm" in t else ("am" if "am" in t else force_p)
-            digits = t.replace("am", "").replace("pm", "").strip()
-            # Handle "10" vs "10:30"
-            fmt = "%I:%M" if ":" in digits else "%I"
-            dt = datetime.strptime(digits, fmt)
-            h = dt.hour
-            if p == "pm" and h != 12:
-                h += 12
-            elif p == "am" and h == 12:
-                h = 0
-            return f"{h:02d}:{dt.minute:02d}"
-
-        try:
-            # Pattern: "until 10am"
-            if t_clean.startswith("until"):
-                time_part = t_clean.replace("until", "").strip()
-                return "00:00", to_24h(time_part)
-
-            # Pattern: "10am - 11am" or "10-11am"
-            if "-" in t_clean:
-                start_p, end_p = [x.strip() for x in t_clean.split("-")]
-                is_end_pm = "pm" in end_p
-
-                # Logic for start period (e.g., 11-1pm)
-                start_p_final = (
-                    "pm"
-                    if "pm" in start_p
-                    else ("am" if "am" in start_p else ("pm" if is_end_pm else "am"))
-                )
-
-                # Cross-over check for 11-1pm
-                if not any(x in start_p for x in ["am", "pm"]):
-                    s_val = int(start_p.split(":")[0])
-                    e_val = int(end_p.replace("am", "").replace("pm", "").split(":")[0])
-                    if is_end_pm and s_val > e_val and s_val != 12:
-                        start_p_final = "am"
-
-                return to_24h(start_p, start_p_final), to_24h(end_p)
-
-            # Pattern: "10am" (Single time means starting then until end of day)
-            else:
-                return to_24h(t_clean), "23:59"
-
-        except Exception:
-            return None, None
-
-    conflicted_items = []
-
-    try:
-        # Expected format from split_time_period: 'DDMMYYYY,HH:MM-HH:MM'
-        _, time_part = scheduled_str.split(",")
-        s_start, s_end = time_part.split("-")
-    except ValueError:
-        return "Error: Invalid scheduled_time format."
-
-    for event in existing_events:
-        e_time_str = event[0]
-        e_name = event[1]
-
-        e_start, e_end = parse_to_range(e_time_str)
-        if not e_start:
-            continue
-
-        # Overlap Check: (StartA < EndB) and (EndA > StartB)
-        if s_start < e_end and s_end > e_start:
-            conflicted_items.append((e_time_str, e_name))
-
-    return conflicted_items
 
 
 async def add_calendar_event(schedule_detail: dict):
@@ -484,12 +429,10 @@ async def add_calendar_event(schedule_detail: dict):
             await page.get_by_label("Save").click()
             await page.wait_for_load_state("networkidle")
 
-            print("✅ Event added")
             assistant_response = "Great! I've added that to your calendar."
             success = True
 
         except Exception as e:
-            print(f"❌ Error adding event: {e}")
             assistant_response = (
                 "I ran into an issue saving the event. Please check the browser window."
             )

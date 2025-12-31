@@ -1,5 +1,6 @@
 import datetime
 from ollama import chat, ChatResponse
+from typing import Dict
 
 OLLAMA_MODEL = "gemma3:12b"
 
@@ -14,14 +15,14 @@ class LLM_Helper:
         current_time = datetime.datetime.now().strftime("%A, %B %d, %Y %H:%M")
         self.init_prompt = f"""
             Role: Google Calendar Booking Assistant.
-            Current Context: {current_time}.
+            Current Context: Today is {current_time}.
 
             Objectives:
             1. Extract meeting details (name, location, description, start/end date, start/end time).
             2. Validate: Dates must be future/today. Times must be 1-12am/pm. 
             3. Logic:
-            - Missing/Invalid Info: Ask a follow-up question. Must know start/end date and start/end time.
-            - Info Gathered: State "The meeting will be scheduled on [Full Month Date], from [time] to [time]. Please confirm."
+            - Missing/Invalid Info: Ask a follow-up question if start/end date and start/end time is unclear. Other information are not required.
+            - Info Gathered: State "The meeting will be scheduled on [Full Month Date], from [time] to [time]. Please confirm." Do not output the JSON before the user has approved it.
             - User Confirms: Output raw JSON ONLY. No markdown, backticks, or preamble.
             - Conflict Bypass: If the user insists on a time despite a system conflict, output: bypass restriction {{JSON}}
 
@@ -35,7 +36,7 @@ class LLM_Helper:
         """
         self.restart_chat_session()
 
-    def restart_chat_session(self):
+    def restart_chat_session(self) -> None:
         self.chat_history = [
             {
                 "role": "system",
@@ -43,7 +44,7 @@ class LLM_Helper:
             },
         ]
 
-    def ask_a_question(self, prompt):
+    def ask_a_question(self, prompt: str) -> str:
         self.chat_history += [{"role": "user", "content": prompt}]
 
         response: ChatResponse = chat(model=OLLAMA_MODEL, messages=self.chat_history)
@@ -54,5 +55,5 @@ class LLM_Helper:
 
         return response.message.content
 
-    def append_chat_history(self, chat_obj):
+    def append_chat_history(self, chat_obj: Dict[str, str]) -> None:
         self.chat_history += [chat_obj]
